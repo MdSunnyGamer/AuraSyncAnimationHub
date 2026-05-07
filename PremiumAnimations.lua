@@ -1,6 +1,6 @@
--- // Ultimate Master Hub v6.0 // --
+-- // AuraSync Animation Hub v9.1 (Platoboost Base Build) // --
 -- // Developer: MdSaniYT_507 //
--- // UI Framework: Rayfield | Auto-Persistence & Multi-Admin //
+-- // UI Framework: Rayfield | Clean Architecture //
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -123,9 +123,9 @@ for name, _ in pairs(AnimationDatabase) do table.insert(bundleNamesList, name) e
 table.sort(bundleNamesList)
 
 -- ========================================================
--- // AUTO-PERSISTENCE ENGINE (RESPAWN PATCH) //
+-- // AUTO-PERSISTENCE ENGINE //
 -- ========================================================
-local activeInjectedAnims = nil -- Stores the currently active animations
+local activeInjectedAnims = nil 
 
 local function InjectAnimationTable(bundleTable)
     local targetChar = player.Character
@@ -162,10 +162,9 @@ local function InjectAnimationTable(bundleTable)
     for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do track:Stop() end
 end
 
--- RESPAWN LISTENER
 player.CharacterAdded:Connect(function(newChar)
     if activeInjectedAnims then
-        task.wait(1) -- Wait for Roblox's native Animate script to load
+        task.wait(1) 
         InjectAnimationTable(activeInjectedAnims)
     end
 end)
@@ -176,11 +175,11 @@ end)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Ultimate Master Hub | By: MdSaniYT_507",
-   LoadingTitle = "Authenticating Modules...",
+   Name = "AuraSync Animation Hub | By: MdSaniYT_507",
+   LoadingTitle = "Authenticating AuraSync Modules...",
    LoadingSubtitle = "by MdSaniYT_507",
    ConfigurationSaving = {Enabled = false},
-   KeySystem = false
+   KeySystem = false -- Platoboost handles verification externally
 })
 
 -- ========================================================
@@ -241,7 +240,7 @@ local BundleTab = Window:CreateTab("Bundles", 4483362458)
 BundleTab:CreateButton({
    Name = "🔁 RESET ANIMATIONS TO DEFAULT",
    Callback = function()
-        activeInjectedAnims = nil -- Clears the auto-persistence
+        activeInjectedAnims = nil 
         InjectAnimationTable(originalAnims)
         Rayfield:Notify({Title = "Restored", Content = "Your default Roblox animations have been restored.", Duration = 3})
    end,
@@ -256,7 +255,7 @@ BundleTab:CreateDropdown({
    Callback = function(Option)
        local selectedBundle = Option[1]
        if AnimationDatabase[selectedBundle] then
-           activeInjectedAnims = AnimationDatabase[selectedBundle] -- Caches for respawn
+           activeInjectedAnims = AnimationDatabase[selectedBundle] 
            InjectAnimationTable(activeInjectedAnims)
            Rayfield:Notify({Title = "Bundle Applied", Content = selectedBundle .. " successfully injected.", Duration = 3})
        end
@@ -300,10 +299,9 @@ end
 CustomTab:CreateButton({
    Name = "⚡ INJECT CUSTOM MIX",
    Callback = function()
-        -- Create a copy of the mix so further dropdown changes don't auto-apply
         local mixToApply = {}
         for k, v in pairs(currentCustomMix) do mixToApply[k] = v end
-        activeInjectedAnims = mixToApply -- Caches for respawn
+        activeInjectedAnims = mixToApply 
         
         InjectAnimationTable(activeInjectedAnims)
         Rayfield:Notify({Title = "Success", Content = "Custom Mix Applied & Saved!", Duration = 3})
@@ -492,6 +490,6 @@ local InfoTab = Window:CreateTab("Info", 4483362458)
 InfoTab:CreateLabel("Script by MdSaniYT_507")
 
 InfoTab:CreateParagraph({
-    Title = "About The Ultimate Master Hub",
+    Title = "About AuraSync Hub",
     Content = "Engineered entirely by MdSaniYT_507.\n\nThis premium utility features an integrated database of 17 exclusive animation bundles, an Auto-Persistent custom mix engine, advanced environmental tools, and the highest-tier global admin scripts. Enjoy the experience!"
 })
