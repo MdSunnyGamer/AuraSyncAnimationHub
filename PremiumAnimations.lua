@@ -1,20 +1,20 @@
--- // Ultimate Master Hub v4.0 // --
+-- // Ultimate Master Hub v6.0 // --
 -- // Developer: MdSaniYT_507 //
--- // UI Framework: Rayfield | 17-Bundle Master Database //
+-- // UI Framework: Rayfield | Auto-Persistence & Multi-Admin //
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
 
 -- ========================================================
 -- // ORIGINAL ANIMATION BACKUP (RESET FEATURE) //
 -- ========================================================
 local originalAnims = {}
-local function BackupDefaults()
-    local animate = char:WaitForChild("Animate", 5)
+local function BackupDefaults(character)
+    local animate = character:WaitForChild("Animate", 5)
     if animate then
         for _, folder in ipairs(animate:GetChildren()) do
             if folder:IsA("StringValue") or folder:IsA("Folder") then
@@ -25,7 +25,7 @@ local function BackupDefaults()
         end
     end
 end
-BackupDefaults()
+if player.Character then BackupDefaults(player.Character) end
 
 -- ========================================================
 -- // MASTER ANIMATION DATABASE (ALL 17 BUNDLES) //
@@ -122,10 +122,16 @@ local bundleNamesList = {}
 for name, _ in pairs(AnimationDatabase) do table.insert(bundleNamesList, name) end
 table.sort(bundleNamesList)
 
--- // SECURE INJECTION ENGINE (RACE CONDITION PATCHED) //
+-- ========================================================
+-- // AUTO-PERSISTENCE ENGINE (RESPAWN PATCH) //
+-- ========================================================
+local activeInjectedAnims = nil -- Stores the currently active animations
+
 local function InjectAnimationTable(bundleTable)
-    local animate = player.Character and player.Character:FindFirstChild("Animate")
-    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    local targetChar = player.Character
+    if not targetChar then return end
+    local animate = targetChar:FindFirstChild("Animate")
+    local humanoid = targetChar:FindFirstChild("Humanoid")
     if not animate or not humanoid then return end
 
     for stateName, idData in pairs(bundleTable) do
@@ -133,7 +139,6 @@ local function InjectAnimationTable(bundleTable)
             local folder = animate:FindFirstChild(stateName)
             if folder then
                 for _, obj in ipairs(folder:GetChildren()) do if obj:IsA("Animation") then obj:Destroy() end end
-                
                 if type(idData) == "table" then
                     for i, id in ipairs(idData) do
                         local newAnim = Instance.new("Animation")
@@ -157,6 +162,14 @@ local function InjectAnimationTable(bundleTable)
     for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do track:Stop() end
 end
 
+-- RESPAWN LISTENER
+player.CharacterAdded:Connect(function(newChar)
+    if activeInjectedAnims then
+        task.wait(1) -- Wait for Roblox's native Animate script to load
+        InjectAnimationTable(activeInjectedAnims)
+    end
+end)
+
 -- ========================================================
 -- // RAYFIELD UI INITIALIZATION //
 -- ========================================================
@@ -164,7 +177,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Ultimate Master Hub | By: MdSaniYT_507",
-   LoadingTitle = "Loading 17 Premium Bundles...",
+   LoadingTitle = "Authenticating Modules...",
    LoadingSubtitle = "by MdSaniYT_507",
    ConfigurationSaving = {Enabled = false},
    KeySystem = false
@@ -228,12 +241,9 @@ local BundleTab = Window:CreateTab("Bundles", 4483362458)
 BundleTab:CreateButton({
    Name = "🔁 RESET ANIMATIONS TO DEFAULT",
    Callback = function()
+        activeInjectedAnims = nil -- Clears the auto-persistence
         InjectAnimationTable(originalAnims)
-        Rayfield:Notify({
-            Title = "Restored",
-            Content = "Your default Roblox animations have been restored.",
-            Duration = 3
-        })
+        Rayfield:Notify({Title = "Restored", Content = "Your default Roblox animations have been restored.", Duration = 3})
    end,
 })
 
@@ -246,12 +256,9 @@ BundleTab:CreateDropdown({
    Callback = function(Option)
        local selectedBundle = Option[1]
        if AnimationDatabase[selectedBundle] then
-           InjectAnimationTable(AnimationDatabase[selectedBundle])
-           Rayfield:Notify({
-               Title = "Bundle Applied",
-               Content = selectedBundle .. " successfully injected.",
-               Duration = 3
-           })
+           activeInjectedAnims = AnimationDatabase[selectedBundle] -- Caches for respawn
+           InjectAnimationTable(activeInjectedAnims)
+           Rayfield:Notify({Title = "Bundle Applied", Content = selectedBundle .. " successfully injected.", Duration = 3})
        end
    end,
 })
@@ -264,6 +271,7 @@ local CustomTab = Window:CreateTab("Custom Mix", 4483362458)
 CustomTab:CreateButton({
    Name = "🔁 RESET ANIMATIONS TO DEFAULT",
    Callback = function()
+        activeInjectedAnims = nil
         InjectAnimationTable(originalAnims)
         Rayfield:Notify({Title = "Restored", Content = "Default animations restored.", Duration = 3})
    end,
@@ -292,15 +300,136 @@ end
 CustomTab:CreateButton({
    Name = "⚡ INJECT CUSTOM MIX",
    Callback = function()
-        InjectAnimationTable(currentCustomMix)
-        Rayfield:Notify({Title = "Success", Content = "Custom Mix Applied!", Duration = 3})
+        -- Create a copy of the mix so further dropdown changes don't auto-apply
+        local mixToApply = {}
+        for k, v in pairs(currentCustomMix) do mixToApply[k] = v end
+        activeInjectedAnims = mixToApply -- Caches for respawn
+        
+        InjectAnimationTable(activeInjectedAnims)
+        Rayfield:Notify({Title = "Success", Content = "Custom Mix Applied & Saved!", Duration = 3})
    end,
 })
 
 -- ========================================================
--- // TAB 4: FUN & UTILITY //
+-- // TAB 4: FUN EXPLOITS //
 -- ========================================================
-local FunTab = Window:CreateTab("Fun", 4483345998)
+local FunTab = Window:CreateTab("Fun Exploits", 4483345998)
+
+local flying = false
+local flySpeed = 50
+FunTab:CreateToggle({
+    Name = "Toggle Fly",
+    CurrentValue = false,
+    Flag = "FlyToggle",
+    Callback = function(Value)
+        flying = Value
+        local char = player.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        if flying then
+            local bv = Instance.new("BodyVelocity", char.HumanoidRootPart)
+            bv.Name = "HubFlyVel"; bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge); bv.Velocity = Vector3.new(0, 0, 0)
+            local bg = Instance.new("BodyGyro", char.HumanoidRootPart)
+            bg.Name = "HubFlyGyro"; bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9); bg.P = 9e4; bg.CFrame = char.HumanoidRootPart.CFrame
+            task.spawn(function()
+                while flying and char and char:FindFirstChild("HumanoidRootPart") do
+                    local camera = Workspace.CurrentCamera
+                    local moveDir = char.Humanoid.MoveDirection
+                    bv.Velocity = moveDir * flySpeed
+                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then bv.Velocity = bv.Velocity + Vector3.new(0, flySpeed, 0)
+                    elseif UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then bv.Velocity = bv.Velocity - Vector3.new(0, flySpeed, 0) end
+                    bg.CFrame = CFrame.new(char.HumanoidRootPart.Position, char.HumanoidRootPart.Position + camera.CFrame.LookVector)
+                    RunService.RenderStepped:Wait()
+                end
+            end)
+        else
+            if char.HumanoidRootPart:FindFirstChild("HubFlyVel") then char.HumanoidRootPart.HubFlyVel:Destroy() end
+            if char.HumanoidRootPart:FindFirstChild("HubFlyGyro") then char.HumanoidRootPart.HubFlyGyro:Destroy() end
+        end
+    end,
+})
+
+FunTab:CreateSlider({
+    Name = "Fly Speed",
+    Range = {10, 200},
+    Increment = 1,
+    Suffix = "Speed",
+    CurrentValue = 50,
+    Flag = "FlySpeed",
+    Callback = function(Value) flySpeed = Value end,
+})
+
+local noclip = false
+FunTab:CreateToggle({
+    Name = "Toggle Noclip",
+    CurrentValue = false,
+    Flag = "NoclipToggle",
+    Callback = function(Value) noclip = Value end,
+})
+RunService.Stepped:Connect(function()
+    if noclip and player.Character then
+        for _, part in pairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
+        end
+    end
+end)
+
+local espEnabled = false
+FunTab:CreateToggle({
+    Name = "Player ESP (Wallhack)",
+    CurrentValue = false,
+    Flag = "ESPToggle",
+    Callback = function(Value)
+        espEnabled = Value
+        if espEnabled then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= player and p.Character then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "HubESP"; highlight.FillColor = Color3.fromRGB(0, 255, 170); highlight.Parent = p.Character
+                end
+            end
+        else
+            for _, p in pairs(Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("HubESP") then p.Character.HubESP:Destroy() end
+            end
+        end
+    end,
+})
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function(c)
+        if espEnabled then
+            task.wait(1)
+            local highlight = Instance.new("Highlight"); highlight.Name = "HubESP"; highlight.FillColor = Color3.fromRGB(0, 255, 170); highlight.Parent = c
+        end
+    end)
+end)
+
+local isInvisible = false
+FunTab:CreateToggle({
+    Name = "Local Invisibility (Ghost Mode)",
+    CurrentValue = false,
+    Flag = "InvisToggle",
+    Callback = function(Value)
+        isInvisible = Value
+        local char = player.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then part.Transparency = isInvisible and 1 or 0
+                elseif part:IsA("Decal") then part.Transparency = isInvisible and 1 or 0 end
+            end
+            if char:FindFirstChild("Humanoid") then
+                char.Humanoid.DisplayDistanceType = isInvisible and Enum.HumanoidDisplayDistanceType.None or Enum.HumanoidDisplayDistanceType.Viewer
+            end
+        end
+    end,
+})
+
+FunTab:CreateButton({
+    Name = "Give BTools (Building Tools)",
+    Callback = function()
+        for i = 1, 3 do local tool = Instance.new("HopperBin"); tool.BinType = i; tool.Parent = player.Backpack end
+        Rayfield:Notify({Title = "Success", Content = "BTools added to inventory.", Duration = 3})
+    end,
+})
 
 FunTab:CreateButton({
    Name = "Get Quantum Teleporter (Click to TP)",
@@ -310,54 +439,53 @@ FunTab:CreateButton({
         tpTool.RequiresHandle = false
         tpTool.ToolTip = "Click anywhere to teleport!"
         tpTool.Parent = player.Backpack
-
         tpTool.Activated:Connect(function()
             local mouse = player:GetMouse()
             local charRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            if charRoot and mouse.Hit then
-                charRoot.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
-            end
+            if charRoot and mouse.Hit then charRoot.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0)) end
         end)
-        Rayfield:Notify({Title = "Tool Granted", Content = "Check your inventory.", Duration = 3})
-   end,
-})
-
-FunTab:CreateSlider({
-   Name = "World Gravity Modifier",
-   Range = {0, 196},
-   Increment = 1,
-   Suffix = "Gravity",
-   CurrentValue = 196,
-   Flag = "GravitySlider", 
-   Callback = function(Value) Workspace.Gravity = Value end,
-})
-
-local activeTrail, activeAttachment0, activeAttachment1
-FunTab:CreateToggle({
-   Name = "Enable Neon Aura Trail",
-   CurrentValue = false,
-   Flag = "TrailToggle", 
-   Callback = function(Value)
-        local charRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if not charRoot then return end
-
-        if Value then
-            activeAttachment0 = Instance.new("Attachment", charRoot); activeAttachment0.Position = Vector3.new(0, 1, 0)
-            activeAttachment1 = Instance.new("Attachment", charRoot); activeAttachment1.Position = Vector3.new(0, -1, 0)
-            activeTrail = Instance.new("Trail", charRoot)
-            activeTrail.Attachment0 = activeAttachment0; activeTrail.Attachment1 = activeAttachment1
-            activeTrail.Color = ColorSequence.new(Color3.fromRGB(0, 255, 170), Color3.fromRGB(150, 50, 255))
-            activeTrail.Lifetime = 0.5; activeTrail.LightEmission = 1
-        else
-            if activeTrail then activeTrail:Destroy() end
-            if activeAttachment0 then activeAttachment0:Destroy() end
-            if activeAttachment1 then activeAttachment1:Destroy() end
-        end
    end,
 })
 
 -- ========================================================
--- // TAB 5: INFO //
+-- // TAB 5: GLOBAL ADMIN SCRIPTS //
+-- ========================================================
+local AdminTab = Window:CreateTab("Admin Scripts", 4483362458)
+
+AdminTab:CreateButton({
+    Name = "Execute Infinite Yield (Latest)",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        Rayfield:Notify({Title = "Executed", Content = "Infinite Yield has been injected.", Duration = 3})
+    end,
+})
+
+AdminTab:CreateButton({
+    Name = "Execute Nameless Admin",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/FilteringEnabled/NamelessAdmin/main/Source"))()
+        Rayfield:Notify({Title = "Executed", Content = "Nameless Admin has been injected.", Duration = 3})
+    end,
+})
+
+AdminTab:CreateButton({
+    Name = "Execute CMD-X",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/CMD-X/CMD-X/master/Source"))()
+        Rayfield:Notify({Title = "Executed", Content = "CMD-X has been injected.", Duration = 3})
+    end,
+})
+
+AdminTab:CreateButton({
+    Name = "Execute Fates Admin",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/fatesc/fates-admin/main/main.lua"))()
+        Rayfield:Notify({Title = "Executed", Content = "Fates Admin has been injected.", Duration = 3})
+    end,
+})
+
+-- ========================================================
+-- // TAB 6: INFO //
 -- ========================================================
 local InfoTab = Window:CreateTab("Info", 4483362458)
 
@@ -365,5 +493,5 @@ InfoTab:CreateLabel("Script by MdSaniYT_507")
 
 InfoTab:CreateParagraph({
     Title = "About The Ultimate Master Hub",
-    Content = "Engineered entirely by MdSaniYT_507.\n\nThis premium utility features an integrated database of 17 exclusive animation bundles, a custom mix-and-match injection engine, and advanced environmental tools. Enjoy the experience!"
+    Content = "Engineered entirely by MdSaniYT_507.\n\nThis premium utility features an integrated database of 17 exclusive animation bundles, an Auto-Persistent custom mix engine, advanced environmental tools, and the highest-tier global admin scripts. Enjoy the experience!"
 })
