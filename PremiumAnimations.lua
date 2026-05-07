@@ -1,6 +1,6 @@
--- // AuraSync Animation Hub v10 (Platoboost Release Build) // --
+-- // AuraSync Animation Hub v10.1 (Platoboost Release Build) // --
 -- // Developer: MdSaniYT_507 //
--- // Security: Platoboost HWID Authentication //
+-- // Security: Platoboost HWID Authentication + UI Patch //
 
 -- ========================================================
 -- // PLATOBOOST API ENGINE (DO NOT MODIFY) //
@@ -311,7 +311,10 @@ else
             
             if verifyKey(enteredKey) then
                 if writefile then writefile(keyFileName, enteredKey) end
-                Rayfield:Notify({Title = "Success!", Content = "Key Verified. Loading AuraSync...", Duration = 3})
+                Rayfield:Notify({Title = "Success!", Content = "Key Verified. Loading AuraSync...", Duration = 2})
+                
+                -- CRITICAL PATCH: Wait 2 seconds to prevent CoreGui destruction crash
+                task.wait(2) 
                 Rayfield:Destroy()
                 task.wait(1)
                 LoadMainHub()
